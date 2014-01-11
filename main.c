@@ -162,18 +162,16 @@ int main (void)
 	while(1)
 	{
 		
-		//GPIO_SetBits(GPIOD, GPIO_Pin_14);
-		//Delay(500);
-		//GPIO_ResetBits(GPIOD, GPIO_Pin_14);
-		//Delay(500);
 
+		
+		for(resiveData = 0; resiveData < 10; resiveData++) send_to_uart3(resiveData);
+		
 			if (USART3->SR & USART_SR_RXNE) 
 				{
 					resiveData = USART3->DR;
 					
 					if (resiveData == '1') GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
 					if (resiveData == '2') GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
-					send_to_uart4(resiveData);
 				}
 				
 			
@@ -186,17 +184,4 @@ int main (void)
 }
 }
 
-//void USART1_IRQHandler(void)
-//{
-//	
-//	USART_ClearITPendingBit(USART1, USART_IT_TC);
-//	GPIO_SetBits(GPIOD, GPIO_Pin_13);
-//	Delay(1000);
-//	GPIO_ResetBits(GPIOD, GPIO_Pin_13);
-//	Delay(1000);
-//	if (USART1->SR & USART_SR_RXNE)
-//	{
-//	USART1->DR = 1;
-//	}
 
-//}
