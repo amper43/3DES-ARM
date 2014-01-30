@@ -4,6 +4,10 @@
 #include "stm32f4xx_rcc.h"
 
 
+#include <string.h>
+#include <stdlib.h>
+
+
 
 volatile uint32_t delayCount = 0;                      /* counts 1ms timeTicks       */
 /*----------------------------------------------------------------------------
@@ -91,7 +95,7 @@ void initAll()
  
 		USART_StructInit(&usart);
 		usart.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-		usart.USART_BaudRate = 9600;	
+		usart.USART_BaudRate = 115200;	
 		usart.USART_WordLength = USART_WordLength_8b;
 		usart.USART_StopBits = USART_StopBits_1;
 		usart.USART_Parity = USART_Parity_No ;
@@ -130,19 +134,33 @@ UART4->DR=data;
 
 
  
-void send_str_uart(char * string,void (*foo)(uint8_t)) {
+void send_str_uart(uint8_t * string,void (*foo)(uint8_t)) {
 
 uint8_t i=0;
 while(string[i]) {
 foo(string[i]);
 i++;
 }
-foo('\r');
-foo('\n');
+foo('\0');
 }
 
 
-
+void read_str_uart3(uint8_t* buf)
+{
+	uint8_t c = '0';
+	uint8_t i = 0;
+	while(c != '\0')
+	{		
+		if(USART3->SR & USART_SR_RXNE) 
+				{
+					c = USART3->DR;
+					buf[i] = c;
+					i++;
+				}
+		
+	}
+	send_to_uart3('r');
+}
 
 
 
@@ -150,28 +168,56 @@ foo('\n');
 int main (void)
 {
 		uint8_t resiveData;
-		
+		uint8_t i = 0;
+		uint8_t buf[9];
+		uint8_t initBuf[20];
+		buf[8] = '\0';
 	
 	
 		initAll();
 	
 	
-		
+	while(1)	
+	{
+		read_str_uart3(initBuf);
 
+	if (strcmp(initBuf, "connect"))
+		{
+			uint32_t speed;
+			send_to_uart3('#');
+			read_str_uart3(initBuf);
+			speed = atoi(initBuf);
+			send_to_uart3('*');
+			send_to_uart3(speed);
+			
+		}
+			
+		
+		
+	} 
+/*
 		
 	while(1)
 	{
 		
-
-		
-		for(resiveData = 0; resiveData < 10; resiveData++) send_to_uart3(resiveData);
-		
+			if (i > 7) 
+			{
+				i = 0;
+				send_to_uart3(buf[0]);
+				send_to_uart3(buf[1]);
+				send_to_uart3(buf[2]);
+				send_to_uart3(buf[3]);
+				send_to_uart3(buf[4]);
+				send_to_uart3(buf[5]);
+				send_to_uart3(buf[6]);
+				send_to_uart3(buf[7]);
+			}
+			
 			if (USART3->SR & USART_SR_RXNE) 
 				{
-					resiveData = USART3->DR;
 					
-					if (resiveData == '1') GPIO_ToggleBits(GPIOD, GPIO_Pin_12);
-					if (resiveData == '2') GPIO_ToggleBits(GPIOD, GPIO_Pin_15);
+					buf[i] = USART3->DR;
+					i++;
 				}
 				
 			
@@ -182,6 +228,7 @@ int main (void)
 	
 	
 }
+*/	
 }
 
 
