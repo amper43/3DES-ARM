@@ -2,6 +2,8 @@
 #include "stm32f4xx_usart.h"
 #include "stm32f4xx_gpio.h"
 #include "stm32f4xx_rcc.h"
+#include "DES.h"
+#include "UART_IO.h"
 
 
 #include <string.h>
@@ -122,80 +124,86 @@ void initAll()
 }
 
 
-void send_to_uart3(uint8_t data)  {
-while(!(USART3->SR & USART_SR_TC));
-USART3->DR=data;
-}
-
-void send_to_uart4(uint8_t data)  {
-while(!(UART4->SR & USART_SR_TC));
-UART4->DR=data;
-}
-
-
- 
-void send_str_uart(uint8_t * string,void (*foo)(uint8_t)) {
-
-uint8_t i=0;
-while(string[i]) {
-foo(string[i]);
-i++;
-}
-foo('\0');
-}
-
-
-void read_str_uart3(uint8_t* buf)
+void bitTransToMas(char inBytes[8],char outMas[64])
 {
-	uint8_t c = '0';
-	uint8_t i = 0;
-	while(c != '\0')
-	{		
-		if(USART3->SR & USART_SR_RXNE) 
-				{
-					c = USART3->DR;
-					buf[i] = c;
-					i++;
-				}
+
+	long long int byte64 = 0;
+	long long int mask;
+	uint8_t i;
+	uint8_t j;
+	memcpy(&byte64, inBytes, 8);
+
+	
+	for(i = 0; i < 64; i++) 
+	{
+		mask = 1;
+		for(j = 63;j > i; j--) mask *= 2;
+		if (byte64 & mask) {outMas[i] = 1; }
+		else {outMas[i] = 0; }
+
+	}
+
+
+}
+
+
+void masTransToBit(char outBytes[8],char inMas[64])
+{
+
+	long long int byte64 = 0;
+	long long int mask = 1;
+	uint8_t i;
+	uint8_t j;
+	
+
+	for(i = 0; i < 64; i++) 
+	{
+		mask = 1;
+		if(inMas[i]) 
+		{
+			for(j = 63;j > i; j--) mask *= 2;
+			byte64 |= mask;
+		}
 		
 	}
-	send_to_uart3('r');
+
+	memcpy(outBytes, &byte64, 8);
+
 }
+
+
+
 
 
 
 
 int main (void)
 {
-		uint8_t resiveData;
+		uint8_t* initStr = "ARM: init ok, mode = "; 
+		uint8_t mode = 'e';
 		uint8_t i = 0;
 		uint8_t buf[9];
 		uint8_t initBuf[20];
+		uint8_t key[56] = {0};
+		uint8_t outBlk[64] = {0};
+		uint8_t inBlk[64] = {0};
+		
 		buf[8] = '\0';
 	
 	
 		initAll();
 	
-	
-	while(1)	
-	{
-		read_str_uart3(initBuf);
 
-	if (strcmp(initBuf, "connect"))
-		{
-			uint32_t speed;
-			send_to_uart3('#');
-			read_str_uart3(initBuf);
-			speed = atoi(initBuf);
-			send_to_uart3('*');
-			send_to_uart3(speed);
-			
-		}
-			
+
+mode = '0';
+while (mode != 'e' && mode != 'd') if (USART3->SR & USART_SR_RXNE) mode = USART3->DR;
 		
 		
-	} 
-/*
+		send_str_uart(initStr,strlen(initStr),0,send_to_uart3);
+		GPIO_SetBits(GPIOD, GPIO_Pin_13);
+		send_to_uart3(mode);
+		if (mode == 'e') GPIO_SetBits(GPIOD, GPIO_Pin_12);
+		if (mode == 'd') GPIO_SetBits(GPIOD, GPIO_Pin_15);
 		
 	while(1)
 	{
@@ -203,14 +211,17 @@ int main (void)
 			if (i > 7) 
 			{
 				i = 0;
-				send_to_uart3(buf[0]);
-				send_to_uart3(buf[1]);
-				send_to_uart3(buf[2]);
-				send_to_uart3(buf[3]);
-				send_to_uart3(buf[4]);
-				send_to_uart3(buf[5]);
-				send_to_uart3(buf[6]);
-				send_to_uart3(buf[7]);
+				
+					
+
+				GPIO_SetBits(GPIOD, GPIO_Pin_14);
+				bitTransToMas(buf,inBlk);
+				if(mode == 'e') EncryptDES(key,outBlk,inBlk);
+				else DecryptDES(key,outBlk,inBlk);
+				masTransToBit(buf, outBlk);
+				
+				GPIO_ToggleBits(GPIOD, GPIO_Pin_14);
+				send_str_uart(buf,8,0,send_to_uart3);
 			}
 			
 			if (USART3->SR & USART_SR_RXNE) 
@@ -220,6 +231,8 @@ int main (void)
 					i++;
 				}
 				
+				
+				
 			
 			
 		
@@ -228,7 +241,7 @@ int main (void)
 	
 	
 }
-*/	
+
 }
 
 
